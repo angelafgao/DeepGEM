@@ -1,3 +1,5 @@
+# Code by He Sun from Deep Probabilistic Imaging (DPI): 
+#                     Uncertainty Quantification and Multi-modal Solution Characterization for Computational Imaging
 import torch
 from torch import nn
 from torch.nn import functional as F
@@ -6,7 +8,6 @@ import numpy as np
 from scipy import linalg as la
 
 logabs = lambda x: torch.log(torch.abs(x))
-
 
 # class ActNorm(nn.Module):
 #     def __init__(self, in_channel, logdet=True):

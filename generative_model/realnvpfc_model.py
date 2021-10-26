@@ -1,3 +1,5 @@
+# Code by He Sun from Deep Probabilistic Imaging (DPI): 
+#                     Uncertainty Quantification and Multi-modal Solution Characterization for Computational Imaging
 import torch
 from torch import nn
 from torch.nn import functional as F

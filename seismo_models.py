@@ -33,6 +33,8 @@ from seismo_helpers import *
 
         
 #                            EikoNet and possible sine activation
+#                            Based off of EikoNet: Solving the Eikonal equation with Deep Neural Networks
+#                            by Jonathan D. Smith, Kamyar Azizzadenesheli, Zachary E. Ross
     
 
 ######################################################################################################################
