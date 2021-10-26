@@ -95,7 +95,7 @@ def EStep(z_sample,XrecIn, device, ytrue, GNet, FNet, prior, data_weight,
 
 def MStep(z_sample, XrecIn, x_sample_src, x_sample_rec, device, ytrue, GNet, FNet, phi_weight, fwd_network,
           data_sigma, velocity, fwd_velocity, nsrc, d, logscale_factor, eiko, xtrue, fwdmodel, xidx, velo_loss, 
-          invar_weight, invar_src, invar_rec, VNet, vnet_weight, ttinvar, fwd_velocity_model, sampled,samplenoise,
+          invar_weight, invar_src, invar_rec, VNet, ttinvar, fwd_velocity_model, sampled,samplenoise,
           prior_x,use_dataparallel = False):
     
     img, logdet = GForward(z_sample, GNet, nsrc, d, logscale_factor, device=device,
@@ -131,20 +131,20 @@ def MStep(z_sample, XrecIn, x_sample_src, x_sample_rec, device, ytrue, GNet, FNe
     else:
         mse_invar = 0
         
-#     Velocity Invariance as Network
-    if VNet is not None: # Only use this to train VNet
-        invar_rec.requires_grad = True
+# #     Velocity Invariance as Network
+#     if VNet is not None: # Only use this to train VNet
+#         invar_rec.requires_grad = True
 
-        XsrcInSingle = torch.unsqueeze(invar_src[0,:], axis=0)
-        XrecInSingle = torch.unsqueeze(invar_rec[0,:], axis=0)
+#         XsrcInSingle = torch.unsqueeze(invar_src[0,:], axis=0)
+#         XrecInSingle = torch.unsqueeze(invar_rec[0,:], axis=0)
         
-        y_velo = FForward(XsrcInSingle, XrecInSingle, 
-                          FNet, data_sigma, velocity, device, velo_loss=True, retain_graph = True) # btsize x nsrc x nrec
-        y_velo_nograd = y_velo.detach()
-        y_vnet = torch.cat(invar_src.shape[1]*[VNet(XrecInSingle)], axis=0).squeeze()
-        mse_vinvar = vnet_weight*nn.MSELoss()(y_vnet, y_velo)
-    else:
-        mse_vinvar = 0
+#         y_velo = FForward(XsrcInSingle, XrecInSingle, 
+#                           FNet, data_sigma, velocity, device, velo_loss=True, retain_graph = True) # btsize x nsrc x nrec
+#         y_velo_nograd = y_velo.detach()
+#         y_vnet = torch.cat(invar_src.shape[1]*[VNet(XrecInSingle)], axis=0).squeeze()
+#         mse_vinvar = vnet_weight*nn.MSELoss()(y_vnet, y_velo)
+#     else:
+#         mse_vinvar = 0
         
 #    Travelt Time Invariance Prior 2 src, n rec
     if ttinvar is not None: # travel time invariance loss
@@ -168,8 +168,8 @@ def MStep(z_sample, XrecIn, x_sample_src, x_sample_rec, device, ytrue, GNet, FNe
         
     
     
-    loss =  pphi + meas_err + mse_invar + mse_vinvar + mse_ttinvar
-    return loss, pphi, meas_err, mse_invar, mse_vinvar, mse_ttinvar
+    loss =  pphi + meas_err + mse_invar  + mse_ttinvar
+    return loss, pphi, meas_err, mse_invar, mse_ttinvar
 
 
 #########################################################################################################
@@ -271,24 +271,24 @@ def init_weights(m):
         torch.nn.init.normal_(m.weight, mean=0.0, std=1e-1)
         m.bias.data.fill_(0.01)
         
-def init_weights_MLP(m):
-    if type(m) == nn.Linear:
-#         torch.nn.init.xavier_uniform_(m.weight)
-#         torch.nn.init.normal_(m.weight, mean=0.0, std=1.7e-1)
-        torch.nn.init.normal_(m.weight, mean=0.0, std=3e-1)
-        m.bias.data.fill_(0.01)
+# def init_weights_MLP(m):
+#     if type(m) == nn.Linear:
+# #         torch.nn.init.xavier_uniform_(m.weight)
+# #         torch.nn.init.normal_(m.weight, mean=0.0, std=1.7e-1)
+#         torch.nn.init.normal_(m.weight, mean=0.0, std=3e-1)
+#         m.bias.data.fill_(0.01)
         
     
-def init_weights_velo(m):
-    if type(m) == nn.Linear:
-#         torch.nn.init.xavier_uniform_(m.weight)
-        torch.nn.init.normal_(m.weight, mean=0.0, std=5e0)
-        m.bias.data.fill_(0.01)
+# def init_weights_velo(m):
+#     if type(m) == nn.Linear:
+# #         torch.nn.init.xavier_uniform_(m.weight)
+#         torch.nn.init.normal_(m.weight, mean=0.0, std=5e0)
+#         m.bias.data.fill_(0.01)
         
-def init_weights_xavier(m):
-    if type(m) == nn.Linear:
-        torch.nn.init.xavier_uniform_(m.weight)
-        m.bias.data.fill_(0.01)
+# def init_weights_xavier(m):
+#     if type(m) == nn.Linear:
+#         torch.nn.init.xavier_uniform_(m.weight)
+#         m.bias.data.fill_(0.01)
         
         
 def init_weights_eiko(m):
