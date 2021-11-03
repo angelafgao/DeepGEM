@@ -1,7 +1,6 @@
 # DeepGEM: Generalized Expectation Maximization for Blind Inversion
 
 ![overview image](https://github.com/angelafgao/DeepGEM/blob/main/teaser.jpg)
-DeepGEM: Generalized Expectation-Maximization for Blind Inversion, [NeurIPS 2021]()
 
 ## Requirements
 General requirements for PyTorch release:
