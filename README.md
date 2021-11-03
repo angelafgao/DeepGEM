@@ -1,7 +1,7 @@
 # DeepGEM
 
-![overview image](https://github.com/HeSunPU/DPI/blob/main/DPIdiagram.jpg)
-DeepGEM: Generalized Expectation-Maximization for Blind Inverse Problems, [NeurIPS 2021](https://arxiv.org/abs/2010.14462)
+![overview image](https://github.com/angelafgao/DeepGEM/blob/main/DPIdiagram.jpg)
+DeepGEM: Generalized Expectation-Maximization for Blind Inverse Problems, [NeurIPS 2021]()
 
 ## Run Examples
 1. The simple 2D example can be run using the ipython notebook ```DPItorch/notebook/DPI toy 2D results.ipynb```
