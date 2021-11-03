@@ -42,18 +42,18 @@ def GForward(z_sample, GNet, nsrc, d, logscale_factor, device, eiko=False,
 """ Forward pass of G network (sample the posterior network)
     
 Arguments: 
-z_sample:
-GNet: posterior estimation network
-nsrc:
-d:
-logscale_factor:
-device:
-eiko:
-samples:
-std:
-samplenoise:
-xtrue
-use_dataparallel:
+    z_sample: random samples of latent space
+    GNet: posterior estimation network
+    nsrc: number of sources
+    d: dimension of space
+    logscale_factor: normalizing value
+    device: network device
+    eiko: M step only generating samples
+    sampled: sample from prior
+    std: std of prior
+    samplenoise: add specific error to samples
+    xtrue: true sources
+    use_dataparallel
 
 """
     if eiko==False:
@@ -81,20 +81,20 @@ use_dataparallel:
 
 def FForward(x, Xrec, FNet, sigma, v, device, fwdmodel=None, nopairs=False, vinvar = False, 
              velo_loss = False, retain_graph = True):
-"""
+""" Forward pass through forward model
     
 Arguments: 
-x:
-Xrec:
-FNet:
-sigma:
-v: 
-device:
-fwdmodel:
-nopairs:
-vinvar:
-velo_loss:
-retain_graph:
+    x: sources
+    Xrec: recievers
+    FNet: forward model network
+    sigma: std of noise
+    v: homogeneous velocity value
+    device: device of model
+    fwdmodel: forward model 
+    nopairs: no pairs for generating travel times
+    vinvar: vinvar network
+    velo_loss: using velocity loss
+    retain_graph: for L_T
 
 """
     if fwdmodel is None:
@@ -106,12 +106,31 @@ retain_graph:
     y += noise.to(device)
     return y
 
-def EStep(z_sample,XrecIn, device, ytrue, GNet, FNet, prior, data_weight, 
+def EStep(z_sample, XrecIn, device, ytrue, GNet, FNet, prior, data_weight, 
           prior_weight, prior_sigma, data_sigma, velocity, nsrc, d, logscale_factor, logdet_weight, velo_loss, 
           use_dataparallel, reduction):
-"""
+""" Single E Step 
     
 Arguments: 
+    z_sample: random samples from latent space
+    XrecIn: receiver locations
+    device: model device
+    ytrue: true measurements
+    GNet:  posterior network
+    FNet: forward model
+    prior: p(x)
+    data_weight: 1/sigma**2 for measurement error sigma
+    prior_weight: 1/sigma**2 for p(x)
+    prior_sigma: for p(x)
+    data_sigma: for measurement likelihood
+    velocity: velocity model
+    nsrc: number sources
+    d: dimension of space
+    logscale_factor: scaling term
+    logdet_weight: weight entropy
+    velo_loss: use velocity loss
+    use_dataparallel
+    reduction: mse vs sse
 
 """
     img, logdet = GForward(z_sample, GNet, nsrc, d, logscale_factor, device=device,
@@ -130,9 +149,39 @@ def MStep(z_sample, XrecIn, x_sample_src, x_sample_rec, device, ytrue, GNet, FNe
           data_sigma, velocity, fwd_velocity, nsrc, d, logscale_factor, eiko, xtrue, fwdmodel, xidx, velo_loss, 
           invar_weight, invar_src, invar_rec, VNet, ttinvar, fwd_velocity_model, sampled,samplenoise,
           prior_x,use_dataparallel = False):
-"""
+""" Single M Step
     
 Arguments: 
+    z_sample: random samples from latent space
+    XrecIn: receiver locations
+    x_sample_src: ____
+    x_sample_rec: ____
+    device: network device
+    ytrue: measurements
+    GNet: posterior network
+    FNet: forward model:
+    phi_weight: lambda_theta
+    fwd_network: ____
+    data_sigma: measurement error
+    velocity: homogeneous velocity
+    fwd_velocity: assumed homogeneous velocity value
+    nsrc: number of sources
+    d: dimension
+    logscale_factor: scaling factor
+    eiko: M step only
+    xtrue: true source locations
+    fwdmodel: ____
+    xidx: ____
+    velo_loss: loss on velocity error
+    invar_weight: lambda_V
+    invar_src: sources used for L_V L_T
+    invar_rec: receivers used for L_V L_T
+    VNet: ______
+    ttinvar: lambda_T
+    fwd_velocity_model: V used for L_theta
+    sampled: sample from prior (used for first M step to initialize theta)
+    samplenoise: noise added (used for first M step to initialize theta)
+    prior_x: p(x) std
 
 """
 
@@ -196,7 +245,7 @@ Arguments:
 #########################################################################################################
 
         
-#                            MAP Helpers
+#                            MAP Helper
     
 
 ###########################################################################################################
@@ -206,9 +255,43 @@ def MAPStep(z_sample, XrecIn, x_sample_src, x_sample_rec, device, ytrue, GNet, F
           data_sigma, velocity, fwd_velocity, nsrc, d, logscale_factor, eiko, xtrue, fwdmodel, xidx, velo_loss, 
           invar_weight, invar_src, invar_rec, vnet_weight, ttinvar, fwd_velocity_model, sampled,samplenoise,
           prior_x, data_weight,reduction,prior,prior_weight,use_dataparallel = False):
-"""
+""" single MAP_{x theta} step
     
 Arguments: 
+    z_sample: random samples from latent space
+    XrecIn: receiver locations
+    x_sample_src: ____
+    x_sample_rec: ____
+    device: network device
+    ytrue: measurements
+    GNet: posterior network
+    FNet: forward model:
+    phi_weight: lambda_theta
+    fwd_network: ____
+    data_sigma: measurement error
+    velocity: homogeneous velocity
+    fwd_velocity: assumed homogeneous velocity value
+    nsrc: number of sources
+    d: dimension
+    logscale_factor: scaling factor
+    eiko: M step only
+    xtrue: true source locations
+    fwdmodel: ____
+    xidx: ____
+    velo_loss: loss on velocity error
+    invar_weight: lambda_V
+    invar_src: sources used for L_V L_T
+    invar_rec: receivers used for L_V L_T
+    VNet: ______
+    ttinvar: lambda_T
+    fwd_velocity_model: V used for L_theta
+    sampled: sample from prior (used for first M step to initialize theta)
+    samplenoise: noise added (used for first M step to initialize theta)
+    prior_x: p(x) std
+    data_weight: weight on data likelihood for data_sigma
+    reduction: mse vs sse
+    prior: p(x)
+    prior_weight: error on source locations
 
 """    
     
@@ -277,7 +360,7 @@ Arguments:
 #########################################################################################################
 
         
-#                            Model Helpers
+#                            Initialize Model
     
 
 ###########################################################################################################
@@ -374,46 +457,46 @@ def get_cmap(n, name='nipy_spectral'):
 RGB color; the keyword argument name must be a standard mpl colormap name.'''
     return plt.cm.get_cmap(name, n)
 
-def PlotVeloSlices(path, filename, plotRec, FNet, device, s, true_velocity_model, savefinal = False):
-"""
+# def PlotVeloSlices(path, filename, plotRec, FNet, device, s, true_velocity_model, savefinal = False):
+# """
     
-Arguments: 
-path: output path
-filename: output filename
-plotRec:
-FNet: forward model network
-device:
-s:
-true_velocity_model
-savefinal
+# Arguments: 
+#     path: output path
+#     filename: output filename
+#     plotRec:
+#     FNet: forward model network
+#     device:
+#     s:
+#     true_velocity_model
+#     savefinal
 
-"""
-    fig, ax = plt.subplots(2, 4, figsize=(14, 8))
-    for i in range(0, 4):
-        if pltRec == True:
-            src = plotRec[i, :]
-        else:
-            src = [0.25*i, 0.25*i]
-        V, TT = VeloRecon(FNet, device, num = s, src=src)
-        V = V.detach().cpu().numpy().reshape([s, s])
-        TT = TT.detach().cpu().numpy().reshape([s, s])
-        error_im = np.abs(V.transpose()-true_velocity_model)
-        err = np.sum(error_im)/51/51
+# """
+#     fig, ax = plt.subplots(2, 4, figsize=(14, 8))
+#     for i in range(0, 4):
+#         if pltRec == True:
+#             src = plotRec[i, :]
+#         else:
+#             src = [0.25*i, 0.25*i]
+#         V, TT = VeloRecon(FNet, device, num = s, src=src)
+#         V = V.detach().cpu().numpy().reshape([s, s])
+#         TT = TT.detach().cpu().numpy().reshape([s, s])
+#         error_im = np.abs(V.transpose()-true_velocity_model)
+#         err = np.sum(error_im)/51/51
         
-        if savefinal == True:
-            np.save("{}/Data/VFinalRecon{}_{}.npy".format(path, src[1], src[0]), V)
+#         if savefinal == True:
+#             np.save("{}/Data/VFinalRecon{}_{}.npy".format(path, src[1], src[0]), V)
 
-        im=ax[0, i].imshow(V.transpose(), vmin=0, vmax=10)
-        fig.colorbar(im, ax=ax[0, i],fraction=0.046, pad=0.04)
-        ax[0, i].set_title("Velocity {} {} {:.3f}".format(int(50*src[1]), int(50*src[0]),err))
+#         im=ax[0, i].imshow(V.transpose(), vmin=0, vmax=10)
+#         fig.colorbar(im, ax=ax[0, i],fraction=0.046, pad=0.04)
+#         ax[0, i].set_title("Velocity {} {} {:.3f}".format(int(50*src[1]), int(50*src[0]),err))
         
-        im=ax[1, i].imshow(np.abs(V.transpose()-true_velocity_model), vmin=0, vmax=3)
-        fig.colorbar(im, ax=ax[1, i],fraction=0.046, pad=0.04)
-        ax[1, i].set_title("Velocity Error {} {}".format(int(50*src[1]), int(50*src[0])))
+#         im=ax[1, i].imshow(np.abs(V.transpose()-true_velocity_model), vmin=0, vmax=3)
+#         fig.colorbar(im, ax=ax[1, i],fraction=0.046, pad=0.04)
+#         ax[1, i].set_title("Velocity Error {} {}".format(int(50*src[1]), int(50*src[0])))
         
-    plt.tight_layout()
-    plt.savefig("{}/{}.png".format(path, filename))
-    plt.close()
+#     plt.tight_layout()
+#     plt.savefig("{}/{}.png".format(path, filename))
+#     plt.close()
     
     
 def IndivPosterior(nsrc, scatter_im, Xsrc, gauss_means, path=None, close=True, bins=201):
@@ -547,7 +630,6 @@ Arguments:
         plt.scatter(Xrec[:, 1], Xrec[:, 0], c="g", label = "Receivers")
     for plt_iter in range(nsrc):
         color = np.ndarray.tolist(np.array(cmap_list(color_order[plt_iter])).reshape(1,-1))
-    #                         print(color)
         if plt_iter == 0:
             plt.scatter(scatter_im[:, plt_iter, 1], scatter_im[:, plt_iter, 0], marker="+", 
                         alpha=alpha,c=color, label="Recon Points")
@@ -651,7 +733,6 @@ Arguments:
     std = np.std(mse_all)
     plt.imshow(mean_img, vmin=0, vmax=10)
     plt.title(r"MSE {:.2f} $\pm$ {:.2f}".format(mse, std))
-#     plt.scatter(Xrec[j, 1]*51, Xrec[j, 0]*51-2,marker="v", c="red")
     plt.axis("off")
     if path is not None:
         if k is None:
@@ -783,16 +864,18 @@ Arguments:
 ######################################################################################################################
 
         
-#                            ADDITIONAL STUFF
+#                            Plotting
     
 
 ######################################################################################################################
 
-# output is nsrc x nrec
 def generate_tt(Xrec_idx, Xsrc_idx, V, x):
-""" 
+"""  generate travel time field of size nsrc x nrec
     
 Arguments: 
+    Xrec_idx: index of receivers in V
+    Xsrc_idx: index of sources in V
+    x: linspace for V
 
 """
     nsrc = Xsrc_idx.shape[0]
@@ -816,9 +899,13 @@ Arguments:
     return tt, TT
 
 def generate_tt_homogeneous(Xrec, Xsrc, v, use_torch=False):
-"""
+""" generate travel time field for homogeneous velocity
     
 Arguments: 
+    Xrec: receiver locations
+    Xsrc: source locations
+    v: velocity value
+    use_torch: use pytorch vs numpy
 
 """
     if use_torch==False:
@@ -834,17 +921,20 @@ Arguments:
         nrec = Xrec.shape[1]
         Xrec = torch.cat(nsrc*[torch.unsqueeze(Xrec, axis=1)], dim=1)
         Xsrc = torch.cat(nrec*[torch.unsqueeze(Xsrc, axis=2)], dim=2)
-#         print(Xrec.shape, Xsrc.shape, "generate")
         D = torch.sqrt(torch.sum((Xrec - Xsrc)**2, dim=3))
     return D/v
 
 def VeloRecon(network, device, src=[0.5], num = 20, use_dataparallel=False):
-"""
+""" generate velocity reconstruction of size num x num with respect to source src
     
 Arguments: 
+    network: eikonet
+    device: network device
+    src: source location
+    num: size of velocity
+    use_dataparallel: network on dataparallel
 
 """
-    #     print(src)
     x = np.linspace(0, 1, num)
     X, Y = np.meshgrid(x, x)
     if len(src) > 1:
@@ -866,16 +956,19 @@ Arguments:
     T0    = torch.sqrt(torch.sum((Xsrc - Xrec)**2, axis=1)+1e-8)  
     T1    = (T0**2)*(torch.sum(dtau**2, axis=1))
     T2    = 2*tau*(dtau[:,0]*(Xrec[:,0]-Xsrc[:,0]) + dtau[:,1]*(Xrec[:,1]-Xsrc[:,1]))
-#     T2    = 2*tau*(dtau[:,0]*(Xrec[:,0]-Xsrc[:,0]) + dtau[:,1]*(Xrec[:,1]-Xsrc[:,1]) + dtau[:,2]*(Xrec[:,2]-Xsrc[:,2]))
     T3    = tau**2
     S2    = (T1+T2+T3)
     V = torch.sqrt(1/S2+1e-8)
     return V, tau*T0
 
 def VeloReconVNet(VNet, device, num = 20, vmat=True):
-"""
+""" generate velocity reconstruction of size num x num with respect to source src
     
 Arguments: 
+    VNet: network for velocity model
+    device: network device
+    num: size of velocity
+    vmat: velocity network as a learned matrix
 
 """
     if vmat == True:
@@ -894,9 +987,15 @@ Arguments:
 
 
 def generate_gif(DIR, name, epoch, subepoch, s, subs):
-"""
+""" generate gif of a certain filename
     
 Arguments: 
+    DIR: output directory
+    name: filename
+    epoch: epoch (or EM iteration)
+    subepoch: E/M step epoch
+    s: epoch spacing
+    subs: subepoch spacing
 
 """
     images = []
