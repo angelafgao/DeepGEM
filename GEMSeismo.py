@@ -364,6 +364,8 @@ def main_function(args):
     else:
         ttinvar_weight = 0
    
+
+    
     for k in range(args.num_epochs):
         
         ##################################### E STEP Update Generator Network #########################################
@@ -373,7 +375,6 @@ def main_function(args):
 
             if args.invar_weight is not None:
                 vinvar_weight = args.invar_weight
-    
             else:
                 vinvar_weight = 0
             if args.ttinvar is not None:
@@ -478,8 +479,8 @@ def main_function(args):
                 
         ############################################## M STEP Update Forward Network #########################################
         
-        # RUN 1 M STEP FOR EM
-        if args.EIKO == False and k == 0:
+        # M STEP SETUP
+        if args.EIKO == False and k == 0: # run 1 M step to initialize theta
             if args.prior_sigma < 1:
                 if args.init_prior == True:
                     sampled = False
@@ -503,7 +504,8 @@ def main_function(args):
                 xtrue = Xsrc_ext
             data_in = true_tt_ext
             num_subepochsM = args.num_subepochsM
-            
+           
+        # M Step single iteration
         for k_sub in range(num_subepochsM):
             if args.EIKO == True:
                 x = k
@@ -521,7 +523,7 @@ def main_function(args):
             
             z_sample = torch.randn(args.btsize, 2*args.nsrc).to(device=args.device)
         
-            if args.fwdmodel is None:
+            if args.fwdmodel is None: ## TODO: unused need to comment out
                 x_idx = None
                 x_sample_src = torch.randn(args.btsize, args.nsrc, 2).to(device=args.device)
                 x_sample_rec = torch.randn(args.btsize, args.nrec, 2).to(device=args.device)
