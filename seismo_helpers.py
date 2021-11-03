@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-
-
 import torch
 import matplotlib.pyplot as plt
 import numpy as np
@@ -34,12 +32,30 @@ import imageio
 ######################################################################################################################
 
         
-#                            EM
+"""                          Helper Functions for EM 
+"""
     
-
 ######################################################################################################################
 
-def GForward(z_sample, GNet, nsrc, d, logscale_factor, device, eiko=False, sampled = False, std=1e-2, samplenoise = None, xtrue=None, use_dataparallel = False):
+def GForward(z_sample, GNet, nsrc, d, logscale_factor, device, eiko=False, 
+             sampled = False, std=1e-2, samplenoise = None, xtrue=None, use_dataparallel = False):
+""" Forward pass of G network (sample the posterior network)
+    
+Arguments: 
+z_sample:
+GNet: posterior estimation network
+nsrc:
+d:
+logscale_factor:
+device:
+eiko:
+samples:
+std:
+samplenoise:
+xtrue
+use_dataparallel:
+
+"""
     if eiko==False:
         if use_dataparallel==True:
             x_samples_transformed, logdet = GNet.module.reverse(z_sample)
@@ -54,13 +70,9 @@ def GForward(z_sample, GNet, nsrc, d, logscale_factor, device, eiko=False, sampl
         if sampled == True:
             if samplenoise is None:
                 img = std*torch.randn(xtrue.shape).to(device) + xtrue
-#                 img[img>1] = 1
-#                 img[img<0]=0
                 logdet = 0
             else:
                 img = xtrue + samplenoise
-#                 img[img>1] = 1
-#                 img[img<0]=0
                 logdet = 0
         else:
             img=xtrue
@@ -69,6 +81,22 @@ def GForward(z_sample, GNet, nsrc, d, logscale_factor, device, eiko=False, sampl
 
 def FForward(x, Xrec, FNet, sigma, v, device, fwdmodel=None, nopairs=False, vinvar = False, 
              velo_loss = False, retain_graph = True):
+"""
+    
+Arguments: 
+x:
+Xrec:
+FNet:
+sigma:
+v: 
+device:
+fwdmodel:
+nopairs:
+vinvar:
+velo_loss:
+retain_graph:
+
+"""
     if fwdmodel is None:
         y = FNet(Xsrc=x, Xrec=Xrec, v=v, nopairs = nopairs, velo=velo_loss, vinvar = vinvar, 
                            device=device, retain_graph=retain_graph) 
@@ -81,6 +109,11 @@ def FForward(x, Xrec, FNet, sigma, v, device, fwdmodel=None, nopairs=False, vinv
 def EStep(z_sample,XrecIn, device, ytrue, GNet, FNet, prior, data_weight, 
           prior_weight, prior_sigma, data_sigma, velocity, nsrc, d, logscale_factor, logdet_weight, velo_loss, 
           use_dataparallel, reduction):
+"""
+    
+Arguments: 
+
+"""
     img, logdet = GForward(z_sample, GNet, nsrc, d, logscale_factor, device=device,
                            eiko=False, xtrue=None, use_dataparallel = use_dataparallel)
     y = FForward(img, XrecIn, FNet, data_sigma, velocity, device, velo_loss=velo_loss)
@@ -97,12 +130,16 @@ def MStep(z_sample, XrecIn, x_sample_src, x_sample_rec, device, ytrue, GNet, FNe
           data_sigma, velocity, fwd_velocity, nsrc, d, logscale_factor, eiko, xtrue, fwdmodel, xidx, velo_loss, 
           invar_weight, invar_src, invar_rec, VNet, ttinvar, fwd_velocity_model, sampled,samplenoise,
           prior_x,use_dataparallel = False):
+"""
     
+Arguments: 
+
+"""
+
     img, logdet = GForward(z_sample, GNet, nsrc, d, logscale_factor, device=device,
                            eiko=eiko, sampled=sampled, std= prior_x,
                            xtrue=xtrue, use_dataparallel=use_dataparallel, samplenoise=samplenoise)
     y = FForward(img, XrecIn, FNet, data_sigma, velocity, device, velo_loss=velo_loss)
-#     print(y.shape, ytrue.shape)
     meas_err = nn.MSELoss()(y, ytrue)
 
     # Fwd model prior as velocity prior
@@ -116,8 +153,6 @@ def MStep(z_sample, XrecIn, x_sample_src, x_sample_rec, device, ytrue, GNet, FNe
         fwd = griddata(idx, fwd_velocity_model.flatten(), invar_rec.detach().cpu().numpy().squeeze(0))
 
         fwdext = np.concatenate(invar_src.shape[1]*[fwd[np.newaxis, :]], axis=0)
-#         print(y_x.shape, fwdext.shape)
-#         print(fwd)
         pphi = phi_weight*nn.MSELoss()(y_x, Tensor(fwdext).to(device))
     else:
         pphi = 0
@@ -131,20 +166,6 @@ def MStep(z_sample, XrecIn, x_sample_src, x_sample_rec, device, ytrue, GNet, FNe
     else:
         mse_invar = 0
         
-# #     Velocity Invariance as Network
-#     if VNet is not None: # Only use this to train VNet
-#         invar_rec.requires_grad = True
-
-#         XsrcInSingle = torch.unsqueeze(invar_src[0,:], axis=0)
-#         XrecInSingle = torch.unsqueeze(invar_rec[0,:], axis=0)
-        
-#         y_velo = FForward(XsrcInSingle, XrecInSingle, 
-#                           FNet, data_sigma, velocity, device, velo_loss=True, retain_graph = True) # btsize x nsrc x nrec
-#         y_velo_nograd = y_velo.detach()
-#         y_vnet = torch.cat(invar_src.shape[1]*[VNet(XrecInSingle)], axis=0).squeeze()
-#         mse_vinvar = vnet_weight*nn.MSELoss()(y_vnet, y_velo)
-#     else:
-#         mse_vinvar = 0
         
 #    Travelt Time Invariance Prior 2 src, n rec
     if ttinvar is not None: # travel time invariance loss
@@ -185,7 +206,11 @@ def MAPStep(z_sample, XrecIn, x_sample_src, x_sample_rec, device, ytrue, GNet, F
           data_sigma, velocity, fwd_velocity, nsrc, d, logscale_factor, eiko, xtrue, fwdmodel, xidx, velo_loss, 
           invar_weight, invar_src, invar_rec, vnet_weight, ttinvar, fwd_velocity_model, sampled,samplenoise,
           prior_x, data_weight,reduction,prior,prior_weight,use_dataparallel = False):
+"""
     
+Arguments: 
+
+"""    
     
     img, logdet = GForward(z_sample, GNet, nsrc, d, logscale_factor, device=device,
                            eiko=False, xtrue=None, use_dataparallel = use_dataparallel)
@@ -207,8 +232,6 @@ def MAPStep(z_sample, XrecIn, x_sample_src, x_sample_rec, device, ytrue, GNet, F
         fwd = griddata(idx, fwd_velocity_model.flatten(), invar_rec.detach().cpu().numpy().squeeze(0))
 
         fwdext = np.concatenate(invar_src.shape[1]*[fwd[np.newaxis, :]], axis=0)
-#         print(y_x.shape, fwdext.shape)
-#         print(fwd)
         pphi = phi_weight*nn.MSELoss()(y_x, Tensor(fwdext).to(device))
     else:
         pphi = 0
@@ -251,10 +274,6 @@ def MAPStep(z_sample, XrecIn, x_sample_src, x_sample_rec, device, ytrue, GNet, F
 
 
 
-
-
-
-
 #########################################################################################################
 
         
@@ -266,32 +285,16 @@ def MAPStep(z_sample, XrecIn, x_sample_src, x_sample_rec, device, ytrue, GNet, F
 
     
 def init_weights(m):
+"""init model weights 
+"""
     if type(m) == nn.Linear:
-#         torch.nn.init.xavier_uniform_(m.weight)
         torch.nn.init.normal_(m.weight, mean=0.0, std=1e-1)
         m.bias.data.fill_(0.01)
         
-# def init_weights_MLP(m):
-#     if type(m) == nn.Linear:
-# #         torch.nn.init.xavier_uniform_(m.weight)
-# #         torch.nn.init.normal_(m.weight, mean=0.0, std=1.7e-1)
-#         torch.nn.init.normal_(m.weight, mean=0.0, std=3e-1)
-#         m.bias.data.fill_(0.01)
-        
-    
-# def init_weights_velo(m):
-#     if type(m) == nn.Linear:
-# #         torch.nn.init.xavier_uniform_(m.weight)
-#         torch.nn.init.normal_(m.weight, mean=0.0, std=5e0)
-#         m.bias.data.fill_(0.01)
-        
-# def init_weights_xavier(m):
-#     if type(m) == nn.Linear:
-#         torch.nn.init.xavier_uniform_(m.weight)
-#         m.bias.data.fill_(0.01)
-        
         
 def init_weights_eiko(m):
+""" init weights of eikonet
+"""    
     if type(m) == torch.nn.Linear:
         stdv = (1. / math.sqrt(m.weight.size(1))/1.)*2
         m.weight.data.uniform_(-stdv,stdv)
@@ -301,6 +304,8 @@ def init_weights_eiko(m):
             m.weight.data.fill_(1.0)
         
 def init_weights_eiko_sine(m):
+""" init weights of eikonet with sine activation
+"""    
     if type(m) == torch.nn.Linear:
         stdv = (1. / math.sqrt(m.weight.size(1))/1.)
         m.weight.data.uniform_(-stdv,stdv)
@@ -310,6 +315,8 @@ def init_weights_eiko_sine(m):
             m.weight.data.fill_(1.0)
             
 def init_weights_eiko_ffreqs(m):
+""" init weights of eikonet with fourier features positional encoding
+"""    
     if type(m) == torch.nn.Linear:
         stdv = (1. / math.sqrt(m.weight.size(1))/1.)
         m.weight.data.uniform_(-stdv,stdv)
@@ -330,7 +337,7 @@ def init_weights_eiko_ffreqs(m):
 
 
 class Img_logscale(nn.Module):
-    """ Custom Linear layer but mimics a standard linear layer """
+""" Custom Linear layer but mimics a standard linear layer """
     def __init__(self, scale=1):
         super().__init__()
         log_scale = torch.Tensor(np.log(scale)*np.ones(1))
@@ -341,15 +348,15 @@ class Img_logscale(nn.Module):
     
     
 def Loss_l1(y_pred):
-    # image prior - sparsity loss
+"""image prior - sparsity loss"""
     return torch.mean(torch.abs(y_pred), (-1, -2))
 
 def Loss_TSV(y_pred):
-    # image prior - total squared variation loss
+""" image prior - total squared variation loss """
     return torch.mean((y_pred[:, 1::, :] - y_pred[:, 0:-1, :])**2, (-1, -2)) + torch.mean((y_pred[:, :, 1::] - y_pred[:, :, 0:-1])**2, (-1, -2))
 
 def Loss_TV(y_pred):
-    # image prior - total variation loss
+""" image prior - total variation loss """
     return torch.mean(torch.abs(y_pred[:, 1::, :] - y_pred[:, 0:-1, :]), (-1, -2)) + torch.mean(torch.abs(y_pred[:, :, 1::] - y_pred[:, :, 0:-1]), (-1, -2))
 
 
@@ -363,11 +370,24 @@ def Loss_TV(y_pred):
 ######################################################################################################################
 
 def get_cmap(n, name='nipy_spectral'):
-    '''Returns a function that maps each index in 0, 1, ..., n-1 to a distinct 
-    RGB color; the keyword argument name must be a standard mpl colormap name.'''
+'''Returns a function that maps each index in 0, 1, ..., n-1 to a distinct 
+RGB color; the keyword argument name must be a standard mpl colormap name.'''
     return plt.cm.get_cmap(name, n)
 
 def PlotVeloSlices(path, filename, plotRec, FNet, device, s, true_velocity_model, savefinal = False):
+"""
+    
+Arguments: 
+path: output path
+filename: output filename
+plotRec:
+FNet: forward model network
+device:
+s:
+true_velocity_model
+savefinal
+
+"""
     fig, ax = plt.subplots(2, 4, figsize=(14, 8))
     for i in range(0, 4):
         if pltRec == True:
@@ -396,8 +416,19 @@ def PlotVeloSlices(path, filename, plotRec, FNet, device, s, true_velocity_model
     plt.close()
     
     
-# Plot each histogram as an individual subplot, size == sqrt(nsrc)
 def IndivPosterior(nsrc, scatter_im, Xsrc, gauss_means, path=None, close=True, bins=201):
+""" Plot each histogram as an individual subplot, size == sqrt(nsrc)
+    
+Arguments: 
+    nsrc: number of sources to plot
+    scatter_im: all sample points
+    Xsrc: source locations matrix
+    gauss_means: mean of prior
+    path: output folder
+    close: close figure if true
+    bins: num bins for histogram
+
+"""
     size= int(np.sqrt(nsrc))
 
     cmap_list=get_cmap(nsrc)
@@ -427,8 +458,22 @@ def IndivPosterior(nsrc, scatter_im, Xsrc, gauss_means, path=None, close=True, b
     return
     
     
-# Plot Density Map of all Sources
 def GenerateDensityMap(nsrc, Xsrc, scatter_im, gauss_means, scale=5, path=None, close=True, bins=201, k=None, k_sub = None):
+"""Plot Density Map of all Sources
+    
+Arguments: 
+    nsrc: number of sources to plot
+    Xsrc: source locations matrix
+    scatter_im: all sample points
+    gauss_means: mean of prior
+    scale: scale values for histogram
+    path: output folder
+    close: close figure if true
+    bins: num bins for histogram
+    k: epoch number/ iteration number for EM
+    k_sub: sub epoch number
+
+"""
     all_hist = np.ones([nsrc, bins, bins])
     
     color_order = np.random.choice(nsrc, size=nsrc, replace=False)
@@ -464,7 +509,6 @@ def GenerateDensityMap(nsrc, Xsrc, scatter_im, gauss_means, scale=5, path=None, 
     plt.axis("off")
     
     if path is not None:
-    #         plt.savefig("{}/PosteriorScatter{}_{}.png".format(path))
         if k is None:
             plt.savefig("{}/PosteriorHistograms.png".format(path))
         else:
@@ -474,9 +518,28 @@ def GenerateDensityMap(nsrc, Xsrc, scatter_im, gauss_means, scale=5, path=None, 
         plt.close()
     return
 
-# Plot scatter points
 def PlotScatterAll(nsrc, nrec, scatter_im, Xrec, Xsrc, mean_img, gauss_means, 
                    px_randmean, prior_sigma, alpha=0.02, k=None, k_sub=None, plot_otherpts=True, path=None, close=True):
+"""Plot scatter points
+    
+Arguments: 
+    nsrc: number of sources to plot
+    nrec: number of receivers to plot
+    scatter_im: all sample points
+    Xsrc: source locations matrix
+    Xrec: receiver locations matrix
+    mean_img: mean of sampled values for posterior
+    gauss_means: mean of prior
+    px_randmean: plot prior if prior is random
+    prior_sigma: std of source prior p(x)
+    alpha: scatter point weight
+    k: epoch number/ iteration number for EM
+    k_sub: sub epoch number
+    plot_otherpts: plot p(x) mean, p(x) 3*std, recon mean
+    path: output folder
+    close: close figure if true
+   
+"""
     cmap_list=get_cmap(nsrc)
     color_order = np.random.choice(nsrc, size=nsrc, replace=False)
     fig, ax = plt.subplots(figsize=(6, 6))
@@ -529,11 +592,9 @@ def PlotScatterAll(nsrc, nrec, scatter_im, Xrec, Xsrc, mean_img, gauss_means,
     plt.legend(loc=[1.3, 0.5])
     plt.xlim([0, 1])
     plt.ylim([1, 0])
-#     plt.title("E Step")
     plt.title("E Step MSE {}".format(errtot/nsrc))
     
     if path is not None:
-    #         plt.savefig("{}/PosteriorScatter{}_{}.png".format(path))
         if k is None:
             plt.savefig("{}/SourceReconScatter.png".format(path))
         else:
@@ -544,6 +605,20 @@ def PlotScatterAll(nsrc, nrec, scatter_im, Xrec, Xsrc, mean_img, gauss_means,
 
 
 def generate_mean_velo(Xrec, FNet, device, VTrue, use_dataparallel, s=51, path=None, k=None, close=True):
+""" plot mean velocity
+    
+Arguments: 
+    Xrec: receiver locations matrix
+    FNet: forward model network
+    device: network device
+    VTrue: true velocity model
+    use_dataparallel: if device is on dataparallel
+    s: size of recon velocity
+    path:  output folder
+    k: epoch number/ iteration number for EM
+    close: close figure if true
+
+"""
     nrec = Xrec.shape[0]
     all_imgs = np.zeros([nrec, s, s])
     mse_all = []
@@ -599,6 +674,12 @@ def generate_mean_velo(Xrec, FNet, device, VTrue, use_dataparallel, s=51, path=N
 ######################################################################################################################
 
 def GetTrueVelo(model):
+""" load true velocity model
+    
+Arguments: 
+    model: name of model
+
+"""
     if model == "Fault":
         true_velocity_model = np.load("SeismoData/GridFault_V.npy")
     elif model == "Blur0":
@@ -709,6 +790,11 @@ def GetTrueVelo(model):
 
 # output is nsrc x nrec
 def generate_tt(Xrec_idx, Xsrc_idx, V, x):
+""" 
+    
+Arguments: 
+
+"""
     nsrc = Xsrc_idx.shape[0]
     nrec = Xrec_idx.shape[0]
     tt = np.zeros([nsrc, nrec])
@@ -730,6 +816,11 @@ def generate_tt(Xrec_idx, Xsrc_idx, V, x):
     return tt, TT
 
 def generate_tt_homogeneous(Xrec, Xsrc, v, use_torch=False):
+"""
+    
+Arguments: 
+
+"""
     if use_torch==False:
         nsrc = Xsrc.shape[0]
         nrec = Xrec.shape[0]
@@ -748,7 +839,12 @@ def generate_tt_homogeneous(Xrec, Xsrc, v, use_torch=False):
     return D/v
 
 def VeloRecon(network, device, src=[0.5], num = 20, use_dataparallel=False):
-#     print(src)
+"""
+    
+Arguments: 
+
+"""
+    #     print(src)
     x = np.linspace(0, 1, num)
     X, Y = np.meshgrid(x, x)
     if len(src) > 1:
@@ -777,6 +873,11 @@ def VeloRecon(network, device, src=[0.5], num = 20, use_dataparallel=False):
     return V, tau*T0
 
 def VeloReconVNet(VNet, device, num = 20, vmat=True):
+"""
+    
+Arguments: 
+
+"""
     if vmat == True:
         return VNet.V.transpose(0, 1)
     else:
@@ -793,6 +894,11 @@ def VeloReconVNet(VNet, device, num = 20, vmat=True):
 
 
 def generate_gif(DIR, name, epoch, subepoch, s, subs):
+"""
+    
+Arguments: 
+
+"""
     images = []
     for i in range(0, epoch, s):
         for j in range(0, subepoch, subs):

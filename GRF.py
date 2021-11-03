@@ -7,7 +7,16 @@ import obspy
 SIM_NUM = 1
 
 def generate_GRF(nx = 51, xmin = 0, xmax=1, ax=1, az=1, sigma=5, delta=0.1):
-
+""" Generate GRF with von Karman covariance function
+    Code by Jorge C. Castellanos
+    
+    Arguments:
+        nx: grid size
+        ax: x correlation 
+        ay: y correlation
+        sigma: std amplitude of perturbation 
+        delta: spacing size
+"""
     ny = nx
     ymin = xmin
     ymax = xmax

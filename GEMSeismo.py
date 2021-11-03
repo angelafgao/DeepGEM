@@ -51,6 +51,7 @@ def main_function(args):
 
     ################################################ SET UP DATA ####################################################
     if args.load == True:
+        """ Load data from specific data file instead of synthetically generating"""
         args.nsrc = 4
         args.nrec = 5
         d = 2
@@ -67,6 +68,7 @@ def main_function(args):
         true_velocity_model = np.load("SeismoData/GridTrue_V.npy")
         true_tt = np.load("SeismoData/GridTrue_tt.npy")
     else:
+        """ generate synthetic data using eikonalfm"""
         x = np.linspace(0, 1, samples)
         idx = np.linspace(0, samples-1, samples)[1:-1]
 
@@ -269,7 +271,7 @@ def main_function(args):
         
     print("Using Eikonet()")
     FNet = EikoNet(input_size = d, sine_activation=args.sine_activation, sine_freq = args.sine_freqs)
-    FNet.init_model(args.fwdmodel, args.randinit, args.device, init_prior=False)
+    FNet.init_model(args.fwdmodel, args.randinit, args.device)#, init_prior=False)
 
     if args.use_dataparallel == True:
         print("Parallel Training with {} GPUS".format(len(args.device_ids)))
@@ -289,6 +291,8 @@ def main_function(args):
         output_matrix = np.load("SeismoData/{}_XTTPairs.npy".format(args.fwdmodel))
         FTrue = lambda idx: Tensor(output_matrix[idx, -1][np.newaxis, :, np.newaxis]).to(args.device)
 
+    ############################################## LOSS AND OPTIMIZER SETUP #####################################################
+    
     flux = np.sum(Xsrc.cpu().numpy())
 
     criterion=nn.MSELoss(reduction=args.reduction)
@@ -322,24 +326,11 @@ def main_function(args):
     Moptimizer = torch.optim.Adam(filter(lambda p: p.requires_grad,list(FNet.parameters()) ), lr = args.Mlr)
 
     
-    #################################### TRAINING #########################################################
+    ################################################### TRAINING ###########################################################
 
-    Eloss_list = []
-    Eloss_prior_list = []
-    Eloss_mse_list = []
-    Eloss_q_list = []
-
-    Mloss_list = []
-    Mloss_mse_list = []
-    Mloss_phi_list = []
-    Mloss_invar_list = []
-    Mloss_netinvar_list = []
-    Mloss_ttinvar_list = []
-    
-    velo_err_list = []
-    tt_err_list = []
-    tt_true_err_list = []
-    source_err_list = []
+    Eloss_list = []; Eloss_prior_list = []; Eloss_mse_list = []; Eloss_q_list = []
+    Mloss_list = []; Mloss_mse_list = []; Mloss_phi_list = []; Mloss_invar_list = []; Mloss_ttinvar_list = []    
+    velo_err_list = []; tt_err_list = []; tt_true_err_list = []; source_err_list = []
 
     z_sample = torch.randn(args.btsize, 2*args.nsrc).to(device=args.device)
     x_sample = torch.randn(args.btsize, 2*args.nsrc).to(device=args.device)
@@ -357,21 +348,13 @@ def main_function(args):
     test = FNet(Xsrc=x, Xrec=XrecIn, v = fwd_velocity, device=args.device) 
     print("Check Initialization", torch.min(test), torch.max(test), torch.min(true_tt), torch.max(true_tt))
     
-    diversity_weight_arr = []
-    vinvar_weight_arr = []
-    ttinvar_weight_arr = []
-    diversity_weight = 1 
+    diversity_weight_arr = []; vinvar_weight_arr = []; ttinvar_weight_arr = []; diversity_weight = 1 
     
     sample_noise = args.prior_sigma*torch.randn(Xsrc_ext.shape).to(args.device)
     if args.sampled == True:
         np.save("{}/Data/XsrcWithNoise.npy".format(args.PATH), (sample_noise + Xsrc_ext).detach().cpu().numpy())
     
     if args.invar_weight is not None:
-#         if args.scheduled_vinvar == True:
-#             # steps
-#             vinvar_weight_diff = (-5+np.log10(args.invar_weight))
-#             vinvar_weight = 10**(np.ceil(vinvar_weight_diff))
-#         else:
         vinvar_weight = args.invar_weight
 
     else:
@@ -383,17 +366,12 @@ def main_function(args):
    
     for k in range(args.num_epochs):
         
-        ########## E STEP Update Generator Network ##############
+        ##################################### E STEP Update Generator Network #########################################
         if args.EIKO == False and (k == 0 and args.EMFull == True) :
             diversity_weight = 1   
             print("Reset diversity")
 
             if args.invar_weight is not None:
-#                 if args.scheduled_vinvar == True:
-#                     # steps
-#                     vinvar_weight_diff = (-5+np.log10(args.invar_weight))
-#                     vinvar_weight = 10**(np.ceil(vinvar_weight_diff))
-#                 else:
                 vinvar_weight = args.invar_weight
     
             else:
@@ -430,6 +408,7 @@ def main_function(args):
                     data_weight = 1/args.data_sigma**2
                     beta = logdet_weight
                 
+                # Forward Pass of E Step
                 Eloss, qloss, priorloss, mseloss = EStep(z_sample, XrecIn, args.device, true_tt_ext, 
                                                          GNet, FNet, prior, 
                                                          data_weight, args.prior_weight, args.prior_sigma, 
@@ -456,7 +435,7 @@ def main_function(args):
                 source_err_list.append(source_err.item())
                 del img, logdet, source_err, z_sample
                 
-                # CHECKPOINT    
+                ################################################## CHECKPOINT ########################################################   
                 if ((k_sub%args.save_everyE == 0) and args.EMFull) or ((k != 0) and (k%args.save_everyE == 0) and not args.EMFull):
                     
 
@@ -497,7 +476,7 @@ def main_function(args):
                     if args.EIKO == False:
                         print("epoch: {} {}, E step loss: {:.8f}".format(k, k_sub,Eloss_list[-1]) )
                 
-        ########## M STEP Update Eiko Network ##############
+        ############################################## M STEP Update Forward Network #########################################
         
         # RUN 1 M STEP FOR EM
         if args.EIKO == False and k == 0:
@@ -510,8 +489,6 @@ def main_function(args):
                     print("RUN M STEP 0, sampled from prior, noisy data")
                 eiko = True
                 xtrue = gauss_means_ext
-    #             xtrue = Xsrc_ext
-    #             data_in = true_tt_nonoise_ext
                 data_in = true_tt_ext
                 num_subepochsM = 1001
             else:
@@ -533,10 +510,6 @@ def main_function(args):
             else:
                 x = k_sub
             if args.invar_weight is not None:
-#                 if args.scheduled_vinvar == True:
-#                     vinvar_weight_diff = x*args.vinvar_alpha + (-5+np.log10(args.invar_weight))
-#                     vinvar_weight = 10**(np.ceil(vinvar_weight_diff))
-#                 else:
                 vinvar_weight = args.invar_weight
             else:
                 vinvar_weight = 0
@@ -556,10 +529,8 @@ def main_function(args):
                 x_idx = np.random.choice(output_matrix.shape[0], args.btsize)
                 x_sample_src = Tensor(output_matrix[x_idx, 0:2][np.newaxis, :, :]).to(args.device)
                 x_sample_rec = Tensor(output_matrix[x_idx, 2:4][np.newaxis, :, :]).to(args.device)
-                
-                # fwd_velocity_model
-                
-            # Sources for invariances
+                                
+            # Setup sources and receivers for L_V and L_T
             if args.invar_rec == True: # use receivers for sources in the invariance losses
                 invar_src = torch.rand(1, 10, 2).to(device=args.device)
                 invar_rec_idx = np.random.choice(args.nrec, 10)
@@ -570,7 +541,8 @@ def main_function(args):
             invar_rec.requires_grad = True
 
 
-            Mloss, philoss, mse, invar, netinvar, ttinvarloss = MStep(z_sample, XrecIn, x_sample_src, x_sample_rec, 
+            # Forward Pass of M Step
+            Mloss, philoss, mse, invar, ttinvarloss = MStep(z_sample, XrecIn, x_sample_src, x_sample_rec, 
                                                                       args.device, data_in, GNet, FNet,
                                                                       args.phi_weight, FTrue, args.data_sigma, velocity=fwd_velocity, 
                                                                       fwd_velocity=fwd_velocity, nsrc = args.nsrc, d=d, 
@@ -579,7 +551,7 @@ def main_function(args):
                                                                       xidx = x_idx, velo_loss=args.velo_loss, 
                                                                       invar_weight = vinvar_weight, 
                                                                       invar_src = invar_src, invar_rec = invar_rec, VNet=VNet, 
-                                                                      vnet_weight = args.vnet_weight, ttinvar = ttinvar_weight,
+                                                                      ttinvar = ttinvar_weight,
                                                                       use_dataparallel = args.use_dataparallel, 
                                                                       fwd_velocity_model = fwd_velocity_model, 
                                                                       sampled=sampled, prior_x = args.prior_sigma,
@@ -589,7 +561,6 @@ def main_function(args):
             Mloss_mse_list.append(mse.detach().cpu().numpy())
             Mloss_phi_list.append(philoss)
             Mloss_invar_list.append(invar)
-            Mloss_netinvar_list.append(netinvar)
             Mloss_ttinvar_list.append(ttinvarloss)
             Moptimizer.zero_grad()
             Mloss.backward()
@@ -597,7 +568,7 @@ def main_function(args):
             Moptimizer.step()
 
             
-            # CHECKPOINT
+            ################################################## CHECKPOINT ########################################################
             if ((k_sub%args.save_every == 0) and args.EMFull) or ((k%args.save_every == 0) and  not args.EMFull):
                 with torch.no_grad():
                     if args.use_dataparallel == True:
@@ -626,6 +597,8 @@ def main_function(args):
                     ax[1].plot(np.log10(Mloss_mse_list), ":")
 
                     ax[1].plot(np.log10(Mloss_list), label= "M All")
+                    
+                    
                     if args.phi_weight > 1e-12:
                         ax[1].plot(np.log10(Mloss_phi_list), ":", label = "p(phi)")
                     ax[1].plot(np.log10(Mloss_mse_list), ":", label="Mstep MSE")
@@ -653,84 +626,75 @@ def main_function(args):
 
 if __name__ == "__main__":
       
+    ################################################## SETUP ARGUMENTS ########################################################
+    
+    
     parser = argparse.ArgumentParser(description='EikoNet with Residual')
     parser.add_argument('--btsize', type=int, default=128, metavar='N',
-                        help='input batch size for training (default: 752)')
+                        help='input batch size for training (default: 128)')
     parser.add_argument('--num_epochs', type=int, default=3500, metavar='N',
-                        help='number of epochs to train (default: 3500)')
+                        help='number of epochs to train (or EM iterations with EMFull flag) (default: 3500)')
     parser.add_argument('--num_subepochsE', type=int, default=400, metavar='N',
-                        help='number of epochs to train (default: 400)')
+                        help='number of E step epochs to train (default: 400)')
     parser.add_argument('--num_subepochsM', type=int, default=600, metavar='N',
-                        help='number of epochs to train (default: 600)')
+                        help='number of M step epochs to train (default: 600)')
     parser.add_argument('--save_every', type=int, default=500, metavar='N',
-                        help='checkpoint model (default: 100)')
+                        help='checkpoint model (default: 500)')
     parser.add_argument('--save_everyE', type=int, default=500, metavar='N',
-                        help='checkpoint model for E step (default: 100)')
+                        help='checkpoint model for E step (default: 500)')
     parser.add_argument('--print_every', type=int, default=50, metavar='N',
-                        help='checkpoint model (default: 50)')
+                        help='print loss every % (default: 50)')
     parser.add_argument('-dir', '--dir', type=str, default="Test",
                         help='output folder')
     
     
     parser.add_argument('--dv', type=str, default='cuda:1',
-                        help='enables CUDA training')
+                        help='enables CUDA training and picks which device')
     parser.add_argument('--multidv', type=int, nargs='+', default = None,
                        help="use multiple gpus (default: None for all) use -1 for just the dv device")
     
     
     # Training method configurations
-#     parser.add_argument('--DPI', action='store_true', default=False, 
-#                         help='use DPI (true forward)')
     parser.add_argument('--EIKO', action='store_true', default=False, 
-                        help='use eikonet method assuming true soruces(default: False )')
+                        help='use eikonet method assuming true soruces (M step only) (default: False )')
     parser.add_argument('--sampled', action='store_true', default=False, 
-                        help='use Eiko with sampled sources (default: False )')
-#     parser.add_argument('--large', action='store_true', default=False, 
-#                         help='use eikonet8 for architecture (default: False)')
+                        help='use EIKO with sampled sources from prior (default: False)')
     parser.add_argument('--EMFull', action='store_true', default=False, 
                         help='True: E to convergence, M to convergence False: alternate E, M every epoch (default: False)')
     
     
     # network setup
     parser.add_argument('--load', action='store_true', default=False,
-                        help='output folder')
+                        help='load data from specific folder (default: False)')
     parser.add_argument('--randinit', action='store_true', default=False,
-                        help='output folder')
-#     parser.add_argument('--GInit', action='store_true', default=False,
-#                         help='initialize Gnetwork')
+                        help='random initialized network (default: False)')
     parser.add_argument('--use_eikonet', action='store_true', default=False,
-                        help='use eikonet')
-#     parser.add_argument('--use_invareiko', action='store_true', default=False, 
-#                         help='use source rec invariant EikoNet (true sources)')
+                        help='use eikonet for forward model (default: False)')
     parser.add_argument('--velo_loss', action='store_true', default=False,
-                        help='use velo as loss (default: false)')
+                        help='use velocity error as loss instead of travel time error (default: false)')
     parser.add_argument('--sine_activation', action='store_true', default=False,
-                        help='use sine instead of ELU')
-#     parser.add_argument('--ffreqs', type=int, default=None,
-#                         help='use fourier frequencies model (default None)')
+                        help='use sine instead of ELU activation (default: false)')
     parser.add_argument('--sine_freqs', type=int, default=1,
-                        help='use fourier frequencies model (default None)')
+                        help='sine frequency for sine activation (default None)')
     
  
     
     # Source Receiver Configuration
     parser.add_argument('--center', action='store_true', default=False, 
-                        help='use source at center when there is only 1 source')
+                        help='use source at center when there is only 1 source (default: false)')
     parser.add_argument('--nsrc', type=int, default=5,
-                        help='number of sources')
+                        help='number of sources (default 5)')
     parser.add_argument('--nrec', type=int, default=20,
-                        help='number of receivers')
+                        help='number of receivers (default 20)')
     parser.add_argument('--surfaceR', type=int, default=0, 
-                        help='number of surfaces: only use receivers at surface')
-#     parser.add_argument('--pltRec', action='store_true', default=False, 
-#                         help='plot recon from 4 random receivers')
+                        help='number of surfaces: only use receivers at surface where 1-4 are number of surfaces (default 0 for random)')
     
     
     # velocity input
-    parser.add_argument('--model', type=str, default="Blur1", 
-                        help='use blur model (true forward)')
+    parser.add_argument('--model', type=str, default="GradBlur1.3Blob3 ", 
+                        help='true forward model (default: true velocity in paper)')
     parser.add_argument('--fwdmodel', type=str, default=None, 
-                        help='use blur model (assumed forward)')
+                        help='assumed forward model (default: homogeneous)')
     parser.add_argument('--fwd_velocity', type=float, default=None, 
                         help='assumed forward velocity (default: mean of true model)')
     parser.add_argument('--init_prior', action='store_true', default = False, 
@@ -740,56 +704,43 @@ if __name__ == "__main__":
     parser.add_argument('--seed', type=int, default=1, metavar='S',
                         help='random seed (default: 1)')
     parser.add_argument('--Elr', type=float, default=1e-4, 
-                        help='learning rate(default: 1e-4)')
+                        help='learning rate for E step (default: 1e-4)')
     parser.add_argument('--Mlr', type=float, default=1e-6, 
-                        help='learning rate(default: 1e-6)')
+                        help='learning rate for M step (default: 1e-6)')
     
     # source receiver config
     
     parser.add_argument('--px_randmean', action='store_true', default=False,
-                       help='use random mean for gaussian prior')
+                       help='use random mean for prior p(x) (default: False)')
     parser.add_argument('--gridsrcs', action='store_true', default=False,
-                       help='use grid for sources')
+                       help='use grid for sources vs. random source locations (default: False)')
     
     # Loss function parameters
     parser.add_argument('--prior_sigma', type=float, default=1e-1, 
-                        help='prior sigma (default: 1e-3)')
+                        help='prior p(x) sigma (default: 1e-1)')
     parser.add_argument('--prior_weight', type=float, default=1, 
-                        help='prior weight (default: 1)')
-    
+                        help='prior p(x) weight (default: 1)')
     parser.add_argument('--data_sigma', type=float, default=2.5e-2, 
-                    help='data sigma (default: 1e-3)')
-#     parser.add_argument('--data_weight', type=float, default=1, 
-#                     help='data weight (default: 1)')
+                    help='std for measurement noise (default: 2.5e-2)')
     parser.add_argument('--nonoise', action="store_true", default=False, 
-                         help="no measurement noise (default False)")
+                         help="no added measurement noise (default False)")
     parser.add_argument('--reduction', type=str, default="sum", 
                          help="use SSE instead of MSE (default 'sum', alt 'mean')")
-    
     parser.add_argument('--phi_weight', type=float, default=1e-3, 
-                    help='weight on prior function (default: 1e-3)')
-    
-#     parser.add_argument('--beta', type=float, default=1, 
-#                          help="use beta term for decaying entropy")
-#     parser.add_argument('--base', type=float, default=np.e, 
-#                          help="base of exponential for decaying function")
-    
+                    help='lambda_theta: weight on L_theta prior function (default: 1e-3)')
     parser.add_argument('--invar_weight', type=float, default=None, 
-                         help="velocity source invariance (as loss) weight (default 0)")
-    parser.add_argument('--scheduled_vinvar', action="store_true", default=False, 
-                         help="schedule vinvar weight (default False)")
-    parser.add_argument('--vnet_weight', type=float, default=1e-6, 
-                         help="velocity source invariance (as network) weight (default 1e-6)")
+                         help="lambda_V: velocity source invariance (as loss) weight (default 0)")
     parser.add_argument('--invar_rec', action="store_false", default=True, 
-                         help="use random receiver for velocity invariance (default True)")
+                         help="use random receivers for velocity invariance (default True)")
     parser.add_argument('--ttinvar', type=float, default=None, 
-                         help="tt symmetry weight (default None)")
+                         help="lambda_T: travel time symmetry weight (default None)")
 
     args = parser.parse_args()    
     
+    
     args.PATH = "SeismoGEMResults/EM/{}_nsrc{}_nrec{}".format(args.dir, args.nsrc, args.nrec)
         
-
+    """ decide devices """
     if torch.cuda.is_available():
         args.device = args.dv
         dv = int(args.device[-1])
@@ -817,10 +768,8 @@ if __name__ == "__main__":
     random.seed(args.seed)
     print(args)
       
-        
     USE_GPU = True
 
-#     dtype = torch.double # we will be using double throughout this tutorial
     print("cuda available ", torch.cuda.is_available())
     print("---> num gpu", torch.cuda.device_count())
     print('---> using device:', args.device)
@@ -837,10 +786,10 @@ if __name__ == "__main__":
         print("Stochastic EM w/ {} epochs and {} E subepochs {} M subepochs".format(args.num_epochs, 
                                                                                   args.num_subepochsE, args.num_subepochsM))
     args.alpha=0
-    print("Entropy decay function beta {} alpha {}".format(args.beta, args.alpha))
+    print("Entropy decay function beta {} alpha {}".format(1, args.alpha))
 
     
-    ############################## CREATE DIRECTORIES ###########################################
+    ############################################## CREATE DIRECTORIES ###########################################
     try:
         # Create target Directory
         os.mkdir(args.PATH)
