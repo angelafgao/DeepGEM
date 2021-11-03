@@ -12,5 +12,13 @@ For seismic tomography:
 Please check ``` DeepGEM.def``` to build the singularity container.
 
 ## Citation
-
+```
+@inproceedings{gao2021deepgem,
+ author = {Gao, Angela F and Castillo, Jorge C and Yue, Yisong and Ross, Zachary E and Bouman, Katherine L},
+ booktitle = {Advances in Neural Information Processing Systems},
+ title = {DeepGEM: Generalized Expectation-Maximization for Blind Inversion},
+ volume = {35},
+ year = {2021}
+}
+```
 Gao, A. F., Castillo, J., Yue, Y., Ross, Z. E., and K. L. Bouman. DeepGEM: Generalized Expectation-Maximization for Blind Inversion, 35th Conference on Neural Information Processing Systems
