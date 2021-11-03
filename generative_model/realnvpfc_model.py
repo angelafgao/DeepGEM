@@ -1,5 +1,7 @@
-# Code by He Sun from Deep Probabilistic Imaging (DPI): 
-#                     Uncertainty Quantification and Multi-modal Solution Characterization for Computational Imaging
+""" Code by He Sun from Deep Probabilistic Imaging (DPI): 
+Uncertainty Quantification and Multi-modal Solution Characterization for Computational Imaging
+"""
+
 import torch
 from torch import nn
 from torch.nn import functional as F
@@ -168,104 +170,62 @@ class AffineCoupling(nn.Module):
 
 
 class Flow(nn.Module):
-	def __init__(self, ndim, affine=True, seqfrac=4):
-		super().__init__()
+    def __init__(self, ndim, affine=True, seqfrac=4):
+        super().__init__()
 
-		self.actnorm = ActNorm()
-		self.actnorm2 = ActNorm()
+        self.actnorm = ActNorm()
+        self.actnorm2 = ActNorm()
 
-		self.coupling = AffineCoupling(ndim, seqfrac=seqfrac, affine=affine)
-		self.coupling2 = AffineCoupling(ndim, seqfrac=seqfrac, affine=affine)
+        self.coupling = AffineCoupling(ndim, seqfrac=seqfrac, affine=affine)
+        self.coupling2 = AffineCoupling(ndim, seqfrac=seqfrac, affine=affine)
 
-		self.ndim = ndim
+        self.ndim = ndim
 
-	def forward(self, input):
-		logdet = 0
-		out, det1 = self.actnorm(input)
-		out, det2 = self.coupling(out)
-		out = out[:, np.arange(self.ndim-1, -1, -1)]
-		out, det3 = self.actnorm2(out)
-		out, det4 = self.coupling2(out)
-		out = out[:, np.arange(self.ndim-1, -1, -1)]
+    def forward(self, input):
+        logdet = 0
+        out, det1 = self.actnorm(input)
+        out, det2 = self.coupling(out)
+        out = out[:, np.arange(self.ndim-1, -1, -1)]
+        out, det3 = self.actnorm2(out)
+        out, det4 = self.coupling2(out)
+        out = out[:, np.arange(self.ndim-1, -1, -1)]
 
-		logdet = logdet + det1
-		if det2 is not None:
-			logdet = logdet + det2
-		logdet = logdet + det3
-		if det4 is not None:
-			logdet = logdet + det4
+        logdet = logdet + det1
+        if det2 is not None:
+            logdet = logdet + det2
+        logdet = logdet + det3
+        if det4 is not None:
+            logdet = logdet + det4
 
-		return out, logdet
+        return out, logdet
 
-	def reverse(self, output):
-		logdet = 0
-		input = output[:, np.arange(self.ndim-1, -1, -1)]
-		input, det1 = self.coupling2.reverse(input)
-		input, det2 = self.actnorm2.reverse(input)
-		input = input[:, np.arange(self.ndim-1, -1, -1)]
-		input, det3 = self.coupling.reverse(input)
-		input, det4 = self.actnorm.reverse(input)
-
-
-		if det1 is not None:
-			logdet = logdet + det1
-		logdet = logdet + det2
-		if det3 is not None:
-			logdet = logdet + det3
-		logdet = logdet + det4
-
-		return input, logdet
+    def reverse(self, output):
+        logdet = 0
+        input = output[:, np.arange(self.ndim-1, -1, -1)]
+        input, det1 = self.coupling2.reverse(input)
+        input, det2 = self.actnorm2.reverse(input)
+        input = input[:, np.arange(self.ndim-1, -1, -1)]
+        input, det3 = self.coupling.reverse(input)
+        input, det4 = self.actnorm.reverse(input)
 
 
-# class Flow(nn.Module):
-#     def __init__(self, ndim, affine=True, seqfrac=4):
-#         super().__init__()
+        if det1 is not None:
+            logdet = logdet + det1
+        logdet = logdet + det2
+        if det3 is not None:
+            logdet = logdet + det3
+        logdet = logdet + det4
 
-#         self.actnorm = ActNorm()
-#         self.actnorm2 = ActNorm()
-
-#         self.coupling = AffineCoupling(ndim, seqfrac=seqfrac, affine=affine)
-#         self.coupling2 = AffineCoupling(ndim, seqfrac=seqfrac, affine=affine)
-
-#         self.ndim = ndim
-
-#     def forward(self, input):
-#         logdet = 0
-#         out, det2 = self.coupling(input)
-#         out = out[:, np.arange(self.ndim-1, -1, -1)]
-#         out, det4 = self.coupling2(out)
-#         out = out[:, np.arange(self.ndim-1, -1, -1)]
-
-#         if det2 is not None:
-#             logdet = logdet + det2
-#         if det4 is not None:
-#             logdet = logdet + det4
-
-#         return out, logdet
-
-#     def reverse(self, output):
-#         logdet = 0
-#         input = output[:, np.arange(self.ndim-1, -1, -1)]
-#         input, det1 = self.coupling2.reverse(input)
-#         input = input[:, np.arange(self.ndim-1, -1, -1)]
-#         input, det3 = self.coupling.reverse(input)
-
-
-#         if det1 is not None:
-#             logdet = logdet + det1
-#         if det3 is not None:
-#             logdet = logdet + det3
-
-#         return input, logdet
+        return input, logdet
 
 
 def Order_inverse(order):
-	order_inv = []
-	for k in range(len(order)):
-		for i in range(len(order)):
-			if order[i] == k:
-				order_inv.append(i)
-	return np.array(order_inv)
+    order_inv = []
+    for k in range(len(order)):
+        for i in range(len(order)):
+            if order[i] == k:
+                order_inv.append(i)
+    return np.array(order_inv)
 
 
 class RealNVP(nn.Module):
@@ -291,7 +251,7 @@ class RealNVP(nn.Module):
                 self.inverse_orders.append(self.orders[i])
             else:
                 self.inverse_orders.append(Order_inverse(self.orders[i]))
-    	
+
     def forward(self, input):
         logdet = 0
         out = input
@@ -313,7 +273,7 @@ class RealNVP(nn.Module):
             logdet = logdet + det
 
         return input, logdet
-    
+
     def load(self, filepath, device):
         checkpoint = torch.load(filepath, map_location=device)
 #         print(checkpoint)

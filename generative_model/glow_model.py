@@ -1,5 +1,7 @@
-# Code by He Sun from Deep Probabilistic Imaging (DPI): 
-#                     Uncertainty Quantification and Multi-modal Solution Characterization for Computational Imaging
+""" Code by He Sun from Deep Probabilistic Imaging (DPI): 
+Uncertainty Quantification and Multi-modal Solution Characterization for Computational Imaging
+"""
+
 import torch
 from torch import nn
 from torch.nn import functional as F
@@ -8,74 +10,6 @@ import numpy as np
 from scipy import linalg as la
 
 logabs = lambda x: torch.log(torch.abs(x))
-
-# class ActNorm(nn.Module):
-#     def __init__(self, in_channel, logdet=True):
-#         super().__init__()
-
-#         self.loc = nn.Parameter(torch.zeros(1, in_channel, 1, 1))
-#         self.scale = nn.Parameter(torch.ones(1, in_channel, 1, 1))
-
-#         self.register_buffer("initialized", torch.tensor(0, dtype=torch.uint8))
-#         self.logdet = logdet
-
-#     def initialize(self, input, inv_init=False):
-#         with torch.no_grad():
-#             flatten = input.permute(1, 0, 2, 3).contiguous().view(input.shape[1], -1)
-#             mean = (
-#                 flatten.mean(1)
-#                 .unsqueeze(1)
-#                 .unsqueeze(2)
-#                 .unsqueeze(3)
-#                 .permute(1, 0, 2, 3)
-#             )
-#             std = (
-#                 flatten.std(1)
-#                 .unsqueeze(1)
-#                 .unsqueeze(2)
-#                 .unsqueeze(3)
-#                 .permute(1, 0, 2, 3)
-#             )
-#             if inv_init:
-#                 self.loc.data.copy_(torch.zeros_like(mean))
-#                 self.scale.data.copy_(torch.ones_like(std))
-#             else:
-#                 self.loc.data.copy_(-mean)
-#                 self.scale.data.copy_(1 / (std + 1e-6))
-
-#     def forward(self, input):
-#         _, _, height, width = input.shape
-
-#         if self.initialized.item() == 0:
-#             self.initialize(input)
-#             self.initialized.fill_(1)
-
-#         log_abs = logabs(self.scale)
-
-#         logdet = height * width * torch.sum(log_abs)
-
-#         if self.logdet:
-#             return self.scale * (input + self.loc), logdet
-
-#         else:
-#             return self.scale * (input + self.loc)
-
-#     def reverse(self, output):
-#         _, _, height, width = output.shape
-
-#         if self.initialized.item() == 0:
-#             self.initialize(output, inv_init=True)
-#             self.initialized.fill_(1)
-
-#         log_abs = logabs(self.scale)
-
-#         logdet = -height * width * torch.sum(log_abs)
-
-#         if self.logdet:
-#             return output / self.scale - self.loc, logdet
-
-#         else:
-#             return output / self.scale - self.loc
 
 
 class ActNorm(nn.Module):
