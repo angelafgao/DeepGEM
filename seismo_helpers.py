@@ -56,7 +56,7 @@ Arguments:
     use_dataparallel
 
 """
-    if eiko==False:
+    if eiko==False:  # SAMPLE FROM POSTERIOR NETWORK
         if use_dataparallel==True:
             x_samples_transformed, logdet = GNet.module.reverse(z_sample)
         else:
@@ -66,15 +66,15 @@ Arguments:
 
         logdet = logdet + det_sigmoid
         img = img.reshape(-1, nsrc, d)
-    else:
-        if sampled == True:
+    else: 
+        if sampled == True:  # SAMPLE FROM PRIOR
             if samplenoise is None:
                 img = std*torch.randn(xtrue.shape).to(device) + xtrue
                 logdet = 0
             else:
                 img = xtrue + samplenoise
                 logdet = 0
-        else:
+        else:  # USE TRUE SOURCES
             img=xtrue
             logdet = 0
     return img, logdet
@@ -100,7 +100,7 @@ Arguments:
     if fwdmodel is None:
         y = FNet(Xsrc=x, Xrec=Xrec, v=v, nopairs = nopairs, velo=velo_loss, vinvar = vinvar, 
                            device=device, retain_graph=retain_graph) 
-    else:
+    else: # fwd model is homogeneous solution
         y = FNet(idx = x)
     noise = torch.randn(y.shape)*sigma
     y += noise.to(device)
@@ -137,9 +137,9 @@ Arguments:
                            eiko=False, xtrue=None, use_dataparallel = use_dataparallel)
     y = FForward(img, XrecIn, FNet, data_sigma, velocity, device, velo_loss=velo_loss)
 
-    logqtheta = -logdet_weight*torch.sum(logdet)
-    meas_err = data_weight*torch.mean(nn.MSELoss(reduction=reduction)(y, ytrue)) #data weight = 1/sigma**2
-    prior_x = torch.sum(prior(img))*prior_weight # prior gauss sum||x-x_mu||/sigma**2
+    logqtheta = -logdet_weight*torch.sum(logdet)                                 # entropy term
+    meas_err = data_weight*torch.mean(nn.MSELoss(reduction=reduction)(y, ytrue)) # measurement error
+    prior_x = torch.sum(prior(img))*prior_weight             # logp(x) w/ gaussian assumption sum||x-x_mu||/sigma**2
     loss = logqtheta + prior_x + meas_err
     return loss, logqtheta, prior_x, meas_err
 
@@ -189,9 +189,9 @@ Arguments:
                            eiko=eiko, sampled=sampled, std= prior_x,
                            xtrue=xtrue, use_dataparallel=use_dataparallel, samplenoise=samplenoise)
     y = FForward(img, XrecIn, FNet, data_sigma, velocity, device, velo_loss=velo_loss)
-    meas_err = nn.MSELoss()(y, ytrue)
+    meas_err = nn.MSELoss()(y, ytrue) # measurement error 
 
-    # Fwd model prior as velocity prior
+    # L_theta: prior on forward model using velocity lambda_theta ||V-V_0||
     if phi_weight > 0:
         y_x = FForward(invar_src, invar_rec, FNet, data_sigma, velocity, device, vinvar = True, nopairs=True, velo_loss=True)
         
@@ -206,7 +206,7 @@ Arguments:
     else:
         pphi = 0
         
-#    Velocity Invariance Prior 2 src, n rec
+    #   L_V: Velocity invariance prior between 2 src, n rec
     if invar_weight > 0:
         invar_src_in = invar_src[:, 0:2, :]
         
@@ -216,7 +216,7 @@ Arguments:
         mse_invar = 0
         
         
-#    Travelt Time Invariance Prior 2 src, n rec
+    #  L_T: Travel Time Invariance Prior 2 src, n rec
     if ttinvar is not None: # travel time invariance loss
         invar_rec.requires_grad = True
         
@@ -236,9 +236,7 @@ Arguments:
     else:
         mse_ttinvar = 0
         
-    
-    
-    loss =  pphi + meas_err + mse_invar  + mse_ttinvar
+    loss =  pphi + meas_err + mse_invar + mse_ttinvar
     return loss, pphi, meas_err, mse_invar, mse_ttinvar
 
 
