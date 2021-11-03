@@ -21,4 +21,3 @@ Please check ``` DeepGEM.def``` to build the singularity container.
  year = {2021}
 }
 ```
-Gao, A. F., Castillo, J., Yue, Y., Ross, Z. E., and K. L. Bouman. DeepGEM: Generalized Expectation-Maximization for Blind Inversion, 35th Conference on Neural Information Processing Systems
