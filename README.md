@@ -7,17 +7,11 @@ DeepGEM: Generalized Expectation-Maximization for Blind Inverse Problems, [NeurI
 General requirements for PyTorch release:
 * [pytorch](https://pytorch.org/)
 
-For radio interferometric imaging:
+For seismic tomography:
 * [eikonalfm](https://pypi.org/project/eikonalfm/)
 
-Please check ``` DeepGEM.def.``` to build the singularity container.
+Please check ``` DeepGEM.def``` to build the singularity container.
 
 ## Citation
-```
-@inproceedings{gao2021deepgem,
-    author = {He Sun and Katherine L. Bouman},
-    title = {Deep Probabilistic Imaging: Uncertainty Quantification and Multi-modal Solution Characterization for Computational Imaging},
-    booktitle = {AAAI Conference on Artificial Intelligence (AAAI)},
-    year = {2021},
-}
-```
+
+Gao, A. F., Castillo, J., Yue, Y., Ross, Z. E., and K. L. Bouman. DeepGEM: Generalized Expectation-Maximization for Inverse Problems with Model Mismatch, 35th Conference on Neural Information Processing Systems
