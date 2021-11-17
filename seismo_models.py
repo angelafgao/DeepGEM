@@ -206,41 +206,44 @@ class EikoNet(torch.nn.Module):
 
     """
         if self.sine_activation == True:
-#             self.apply(init_weights_eiko_sine)
-#             print("Init with random model")
+            if rand == True:
+                self.apply(init_weights_eiko_sine)
+                print("Init with random model")
 #             if init_prior == True:
 #                 self.load(("SeismoGEMResults/EM/EMTestsGradBlur/"
 #                            "EIKOSampled_FwdHs_data1e-2_xsigma1e-1_px_randmean1e-1_nsrc100_nrec20/"
 #                             "ForwardNetwork10000_00000.pt"), device)
 #                 print("Init with Model Trained with Uncertain Prior")
 #             else:
-            if fwdmodel == "GradBlur1.3":
-                self.load(("SeismoGEMResults/FNet_Pretrain/"
-                            "EIKO_VeloLoss_GradBlur1.3_prior1e-2_data1e-3_nsrc100_nrec100/"
-                            "ForwardNetwork30000_00000.pt"), device)         
-                print("Init with GradBlur1.3 model")
-            elif fwdmodel == "GradBlur1.3Grad" or fwdmodel == "GRFGrad":
-                self.load(("SeismoGEMResults/FNet_Pretrain/"
-                            "EIKO_VeloLoss_NewGrad_prior1e-2_data1e-3_nsrc100_nrec100/"
-                            "ForwardNetwork10000_00000.pt"), device)         
-                print("Init with GradBlur1.3Grad NewGrad model")  
-            elif fwdmodel == "GradBlobBlur1.3_0.3":
-                self.load(("SeismoGEMResults/FNet_Pretrain/"
-                            "EIKO_VeloLoss_GradBlur1.3Blob3_prior1e-2_data1e-3_nsrc100_nrec100/"
-                            "ForwardNetwork50000_00000.pt"), device)  
-
-            elif fwdmodel == "H6":
-                self.load(("SeismoGEMResults/FNet_Pretrain/"
-                            "EIKO_VeloLoss_H6_prior1e-2_data1e-3_nsrc100_nrec100/"
-                            "ForwardNetwork10000_00000.pt"), device)         
-                print("Init with H6 model")
             else:
-                self.load("SeismoGEMResults/FNet_Pretrain/Init_nsrc100_nrec100/ForwardNetwork00300.pt", device)
-                print("Init with H5 model")
+                if fwdmodel == "GradBlur1.3":
+                    self.load(("SeismoGEMResults/FNet_Pretrain/"
+                                "EIKO_VeloLoss_GradBlur1.3_prior1e-2_data1e-3_nsrc100_nrec100/"
+                                "ForwardNetwork30000_00000.pt"), device)         
+                    print("Init with GradBlur1.3 model")
+                elif fwdmodel == "GradBlur1.3Grad" or fwdmodel == "GRFGrad":
+                    self.load(("SeismoGEMResults/FNet_Pretrain/"
+                                "EIKO_VeloLoss_NewGrad_prior1e-2_data1e-3_nsrc100_nrec100/"
+                                "ForwardNetwork10000_00000.pt"), device)         
+                    print("Init with GradBlur1.3Grad NewGrad model")  
+                elif fwdmodel == "GradBlobBlur1.3_0.3":
+                    self.load(("SeismoGEMResults/FNet_Pretrain/"
+                                "EIKO_VeloLoss_GradBlur1.3Blob3_prior1e-2_data1e-3_nsrc100_nrec100/"
+                                "ForwardNetwork50000_00000.pt"), device)  
+
+                elif fwdmodel == "H6":
+                    self.load(("SeismoGEMResults/FNet_Pretrain/"
+                                "EIKO_VeloLoss_H6_prior1e-2_data1e-3_nsrc100_nrec100/"
+                                "ForwardNetwork10000_00000.pt"), device)         
+                    print("Init with H6 model")
+                else:
+                    self.load("SeismoGEMResults/FNet_Pretrain/Init_nsrc100_nrec100/ForwardNetwork00300.pt", device)
+                    print("Init with H5 model")
         else:
-            self.apply(init_weights_eiko)
-            print("init with random model")
-            if rand == False:
+            if rand == True:
+                self.apply(init_weights_eiko)
+                print("init with random model")
+            else:
                 self.load("SeismoGEMResults/Init_nsrc100_nrec100/ForwardNetwork00300.pt", device)
                 print("Init with forward model")
         return
