@@ -332,8 +332,8 @@ def main_function(args):
     Mloss_list = []; Mloss_mse_list = []; Mloss_phi_list = []; Mloss_invar_list = []; Mloss_ttinvar_list = []    
     velo_err_list = []; tt_err_list = []; tt_true_err_list = []; source_err_list = []
 
-    z_sample = torch.randn(args.btsize, 2*args.nsrc).to(device=args.device)
-    x_sample = torch.randn(args.btsize, 2*args.nsrc).to(device=args.device)
+    z_sample = torch.randn(args.btsize, d*args.nsrc).to(device=args.device)
+    x_sample = torch.randn(args.btsize, d*args.nsrc).to(device=args.device)
     XrecIn = torch.cat(args.btsize*[torch.unsqueeze(Xrec, axis=0)])
     
     if args.velo_loss == True:
@@ -401,7 +401,7 @@ def main_function(args):
             
         for k_sub in range(num_subepochsE):
             if args.EIKO == False:
-                z_sample = torch.randn(args.btsize, 2*args.nsrc).to(device=args.device)
+                z_sample = torch.randn(args.btsize, d*args.nsrc).to(device=args.device)
                 if args.EIKO == False and k == 0:
                     data_weight = 0
                     beta = 1
@@ -428,7 +428,7 @@ def main_function(args):
                 Eoptimizer.step()
                 
                 ## SCATTER PLOT RECONSTRUCTED SOURCES             
-                z_sample = torch.randn(n_sample, 2*args.nsrc).to(device=args.device)
+                z_sample = torch.randn(n_sample, d*args.nsrc).to(device=args.device)
                 img, logdet = GForward(z_sample, GNet, args.nsrc, d, logscale_factor, 
                                        eiko=args.EIKO, xtrue = Xsrc_ext1024, device=args.device,
                                        use_dataparallel=args.use_dataparallel)
@@ -456,7 +456,7 @@ def main_function(args):
                                     }, '{}/{}{}_{}.pt'.format(args.PATH,"GeneratorNetwork",str(k).zfill(5),str(k_sub).zfill(5)))
 
                     ## SCATTER PLOT RECONSTRUCTED SOURCES             
-                    z_sample = torch.randn(n_sample, 2*args.nsrc).to(device=args.device)
+                    z_sample = torch.randn(n_sample, d*args.nsrc).to(device=args.device)
                     img, logdet = GForward(z_sample, GNet, args.nsrc, d, logscale_factor, 
                                            eiko=args.EIKO, xtrue = Xsrc_ext1024, device=args.device,
                                            use_dataparallel=args.use_dataparallel)
@@ -521,12 +521,12 @@ def main_function(args):
                 ttinvar_weight = 0
             
             
-            z_sample = torch.randn(args.btsize, 2*args.nsrc).to(device=args.device)
+            z_sample = torch.randn(args.btsize, d*args.nsrc).to(device=args.device)
         
             if args.fwdmodel is None: ## TODO: unused need to comment out
                 x_idx = None
-                x_sample_src = torch.randn(args.btsize, args.nsrc, 2).to(device=args.device)
-                x_sample_rec = torch.randn(args.btsize, args.nrec, 2).to(device=args.device)
+                x_sample_src = torch.randn(args.btsize, args.nsrc, d).to(device=args.device)
+                x_sample_rec = torch.randn(args.btsize, args.nrec, d).to(device=args.device)
             else:
                 x_idx = np.random.choice(output_matrix.shape[0], args.btsize)
                 x_sample_src = Tensor(output_matrix[x_idx, 0:2][np.newaxis, :, :]).to(args.device)
@@ -534,12 +534,12 @@ def main_function(args):
                                 
             # Setup sources and receivers for L_V and L_T
             if args.invar_rec == True: # use receivers for sources in the invariance losses
-                invar_src = torch.rand(1, 10, 2).to(device=args.device)
+                invar_src = torch.rand(1, 10, d).to(device=args.device)
                 invar_rec_idx = np.random.choice(args.nrec, 10)
                 invar_src = Xrec[invar_rec_idx, :][np.newaxis, :]           
             else:
-                invar_src = torch.rand(1, 10, 2).to(device=args.device)
-            invar_rec = torch.rand(1, 100, 2).to(device=args.device)
+                invar_src = torch.rand(1, 10, d).to(device=args.device)
+            invar_rec = torch.rand(1, 100, d).to(device=args.device)
             invar_rec.requires_grad = True
 
 

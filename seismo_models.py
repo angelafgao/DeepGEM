@@ -184,7 +184,13 @@ class EikoNet(torch.nn.Module):
         XrecExt = XrecFull.reshape([s[1]*s[2], s[3]])
         
         T1    = (T0**2)*(torch.sum(dtau**2, axis=1))
-        T2    = 2*tau*(dtau[:,0]*(XrecExt[:,0]-XsrcExt[:,0]) + dtau[:,1]*(XrecExt[:,1]-XsrcExt[:,1]))
+        
+        d = Xsrc.shape[-1]
+        if d == 2:
+            T2    = 2*tau*(dtau[:,0]*(XrecExt[:,0]-XsrcExt[:,0]) + dtau[:,1]*(XrecExt[:,1]-XsrcExt[:,1]))
+        elif d == 3:
+            T2    = 2*tau*(dtau[:,0]*(XrecExt[:,0]-XsrcExt[:,0]) + dtau[:,1]*(XrecExt[:,1]-XsrcExt[:,1]) + dtau[:,2]*(XrecExt[:,2]-XsrcExt[:,2]))
+            
         T3    = tau**2
         S2    = (T1+T2+T3)
         V = (1/S2+1e-8)**(1/2)
